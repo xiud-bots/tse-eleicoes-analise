@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * ANÁLISE ELEITORAL BRASIL - TSE (PRESIDENCIAIS)
- * Arquitetura Frontend: JavaScript Vanilla ES6+ & Leaflet Map & Chart.js
+ * Arquitetura Frontend: JavaScript Vanilla ES6+ & SVG Map (Estilo MapChart) & Chart.js
  * Autor: @brendan (Desenvolvedor Frontend Sênior)
  * ============================================================================
  */
@@ -9,7 +9,7 @@
 (function () {
   'use strict';
 
-  // Base de dados simulada de Seções Eleitorais do Brasil com coordenadas, votos, região e status de mudança de endereço
+  // Base de dados de seções eleitorais
   const secoesData = [
     {
       id: "sec-01",
@@ -20,7 +20,6 @@
       secao: "0124",
       local: "Escola Estadual Dom Pedro II",
       endereco: "Av. Paulista, 1000 - Bela Vista, São Paulo - SP",
-      coords: [-23.5615, -46.6559],
       aptos: 400,
       comparecimento: 340,
       abstencoes: 60,
@@ -42,7 +41,6 @@
       secao: "0088",
       local: "Faculdade de Direito USP",
       endereco: "Largo São Francisco, 95 - Centro Histórico, São Paulo - SP",
-      coords: [-23.5505, -46.6333],
       aptos: 450,
       comparecimento: 390,
       abstencoes: 60,
@@ -64,7 +62,6 @@
       secao: "0012",
       local: "Colégio Pedro II",
       endereco: "Av. Mal. Floriano, 83 - Centro, Rio de Janeiro - RJ",
-      coords: [-22.9068, -43.1729],
       aptos: 380,
       comparecimento: 310,
       abstencoes: 70,
@@ -86,7 +83,6 @@
       secao: "0310",
       local: "Escola Municipal Copacabana",
       endereco: "Rua Barata Ribeiro, 200 - Copacabana, Rio de Janeiro - RJ",
-      coords: [-22.9691, -43.1868],
       aptos: 420,
       comparecimento: 350,
       abstencoes: 70,
@@ -108,7 +104,6 @@
       secao: "0045",
       local: "Universidade Federal da Bahia (UFBA)",
       endereco: "Rua Dr. Augusto Viana, s/n - Canela, Salvador - BA",
-      coords: [-12.9922, -38.5205],
       aptos: 350,
       comparecimento: 295,
       abstencoes: 55,
@@ -130,7 +125,6 @@
       secao: "0112",
       local: "Colégio Estadual Odorico Tavares",
       endereco: "Av. Sete de Setembro, 2185 - Vitória, Salvador - BA",
-      coords: [-12.9961, -38.5273],
       aptos: 390,
       comparecimento: 320,
       abstencoes: 70,
@@ -152,7 +146,6 @@
       secao: "0211",
       local: "Escola Estadual Afonso Pena",
       endereco: "Rua da Bahia, 1716 - Lourdes, Belo Horizonte - MG",
-      coords: [-19.9292, -43.9386],
       aptos: 410,
       comparecimento: 345,
       abstencoes: 65,
@@ -174,7 +167,6 @@
       secao: "0089",
       local: "Instituto Federal do Rio Grande do Sul (IFRS)",
       endereco: "Rua Cel. Vicente, 281 - Centro Histórico, Porto Alegre - RS",
-      coords: [-30.0277, -51.2287],
       aptos: 370,
       comparecimento: 315,
       abstencoes: 55,
@@ -196,7 +188,6 @@
       secao: "0104",
       local: "Universidade Federal do Ceará (UFC)",
       endereco: "Av. da Universidade, 2853 - Benfica, Fortaleza - CE",
-      coords: [-3.7436, -38.5414],
       aptos: 400,
       comparecimento: 335,
       abstencoes: 65,
@@ -218,7 +209,6 @@
       secao: "0015",
       local: "Escola Estadual Paes de Carvalho",
       endereco: "Av. Conselheiro Furtado, 80 - Nazaré, Belém - PA",
-      coords: [-1.4558, -48.4902],
       aptos: 360,
       comparecimento: 290,
       abstencoes: 70,
@@ -233,61 +223,23 @@
     }
   ];
 
-  // Estado atual da aplicação
   let selectedSection = secoesData[0];
-  let map = null;
-  let markersLayer = null;
 
-  // Inicialização do Mapa Leaflet
-  function initMap() {
-    map = L.map('map').setView([-14.2350, -51.9253], 4); // Centro do Brasil
+  function populateSecaoSelect(dataList) {
+    const select = document.getElementById('filter-secao');
+    if (!select) return;
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a> | Dados TSE',
-      subdomains: 'abcd',
-      maxZoom: 18
-    }).addTo(map);
-
-    markersLayer = L.layerGroup().addTo(map);
-    renderMapMarkers(secoesData);
-  }
-
-  function renderMapMarkers(dataList) {
-    if (!markersLayer) return;
-    markersLayer.clearLayers();
-
-    dataList.forEach(sec => {
-      const color = sec.vencedor === 'Lula' ? '#f97316' : (sec.vencedor === 'Bolsonaro' ? '#22c55e' : '#eab308');
-      
-      const circleMarker = L.circleMarker(sec.coords, {
-        radius: 9,
-        fillColor: color,
-        color: '#ffffff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.9
-      });
-
-      circleMarker.on('click', () => {
-        selectSection(sec);
-      });
-
-      circleMarker.bindTooltip(`<b>${sec.municipio} (${sec.uf})</b><br>Zona: ${sec.zona} | Seção: ${sec.secao}<br>Vencedor: <b>${sec.vencedor}</b>`, {
-        direction: 'top'
-      });
-
-      markersLayer.addLayer(circleMarker);
-    });
-
-    document.getElementById('map-counter-badge').textContent = `Mostrando ${dataList.length} seções`;
+    select.innerHTML = '<option value="all">Todas as Seções Cadastradas</option>' + dataList.map(sec => {
+      return `<option value="${sec.id}">${sec.uf} - ${sec.municipio} (Z: ${sec.zona} | S: ${sec.secao} - ${sec.local})</option>`;
+    }).join('');
   }
 
   function selectSection(sec) {
     selectedSection = sec;
 
-    // Atualizar HTML do Painel Lateral
     document.getElementById('det-local-name').textContent = sec.local;
     document.getElementById('det-address').textContent = sec.endereco;
+    document.getElementById('det-regiao').textContent = sec.regiao;
     document.getElementById('det-zona').textContent = sec.zona;
     document.getElementById('det-secao').textContent = sec.secao;
 
@@ -320,13 +272,10 @@
     document.getElementById('det-comparecimento').textContent = `${sec.comparecimento} (${pctComp}%)`;
     document.getElementById('det-abstencoes').textContent = `${sec.abstencoes} (${pctAbs}%)`;
 
-    // Centralizar mapa
-    if (map) {
-      map.setView(sec.coords, 14);
-    }
+    const selectSecao = document.getElementById('filter-secao');
+    if (selectSecao) selectSecao.value = sec.id;
   }
 
-  // Tabela de Seções com Mudança de Endereço
   function renderRelocatedTable(filterText = '') {
     const tbody = document.getElementById('relocated-table-body');
     if (!tbody) return;
@@ -359,7 +308,7 @@
           <td class="py-3 px-3 font-bold ${vencedorColor}">${sec.vencedor}</td>
           <td class="py-3 px-3 text-right">
             <button class="btn-goto-sec px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors" data-id="${sec.id}">
-              Ver no Mapa
+              Ver Detalhes
             </button>
           </td>
         </tr>
@@ -383,7 +332,6 @@
   let regionChart = null;
 
   function initCharts() {
-    // 1. Gráfico Nacional
     const ctxNat = document.getElementById('chart-national-votes');
     if (ctxNat) {
       nationalChart = new Chart(ctxNat, {
@@ -400,16 +348,12 @@
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: {
-              position: 'bottom',
-              labels: { color: '#cbd5e1', font: { size: 11 } }
-            }
+            legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 } } }
           }
         }
       });
     }
 
-    // 2. Gráfico por Região
     const ctxReg = document.getElementById('chart-region-votes');
     if (ctxReg) {
       regionChart = new Chart(ctxReg, {
@@ -417,18 +361,8 @@
         data: {
           labels: ['Nordeste', 'Norte', 'Centro-Oeste', 'Sudeste', 'Sul'],
           datasets: [
-            {
-              label: 'Lula (PT) %',
-              data: [69.3, 55.2, 40.1, 47.8, 43.3],
-              backgroundColor: '#f97316',
-              borderRadius: 6
-            },
-            {
-              label: 'Bolsonaro (PL) %',
-              data: [30.7, 44.8, 59.9, 52.2, 56.7],
-              backgroundColor: '#22c55e',
-              borderRadius: 6
-            }
+            { label: 'Lula (PT) %', data: [69.3, 55.2, 40.1, 47.8, 43.3], backgroundColor: '#f97316', borderRadius: 6 },
+            { label: 'Bolsonaro (PL) %', data: [30.7, 44.8, 59.9, 52.2, 56.7], backgroundColor: '#22c55e', borderRadius: 6 }
           ]
         },
         options: {
@@ -439,17 +373,13 @@
             y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' }, max: 100 }
           },
           plugins: {
-            legend: {
-              position: 'bottom',
-              labels: { color: '#cbd5e1', font: { size: 11 } }
-            }
+            legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 } } }
           }
         }
       });
     }
   }
 
-  // Abas
   function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
@@ -457,7 +387,6 @@
     if (tabId === 'map') {
       document.getElementById('tab-map').classList.add('active');
       document.getElementById('view-map').classList.remove('hidden');
-      if (map) map.invalidateSize();
     } else if (tabId === 'relocated') {
       document.getElementById('tab-relocated').classList.add('active');
       document.getElementById('view-relocated').classList.remove('hidden');
@@ -467,32 +396,55 @@
     }
   }
 
-  // Filtros geográficos
-  function setupFilters() {
+  function setupInteractions() {
+    // Cliques nas regiões do SVG
+    document.querySelectorAll('.region-group').forEach(group => {
+      group.addEventListener('click', () => {
+        const regName = group.getAttribute('data-region');
+        document.getElementById('filter-region').value = regName;
+        
+        const matched = secoesData.find(s => s.regiao === regName);
+        if (matched) {
+          selectSection(matched);
+        }
+        document.getElementById('svg-map-subtitle').textContent = `Região selecionada: ${regName}`;
+      });
+    });
+
+    // Filtros
     const filterRegion = document.getElementById('filter-region');
     const filterUf = document.getElementById('filter-uf');
-    const filterMunicipio = document.getElementById('filter-municipio');
+    const filterSecao = document.getElementById('filter-secao');
 
     function applyFilters() {
       const reg = filterRegion.value;
       const uf = filterUf.value;
-      const mun = filterMunicipio.value;
 
       let filtered = secoesData.filter(sec => {
         if (reg !== 'all' && sec.regiao !== reg) return false;
         if (uf !== 'all' && sec.uf !== uf) return false;
-        if (mun !== 'all' && sec.municipio !== mun) return false;
         return true;
       });
 
-      renderMapMarkers(filtered);
+      populateSecaoSelect(filtered);
+      if (filtered.length > 0) {
+        selectSection(filtered[0]);
+      }
     }
 
     if (filterRegion) filterRegion.addEventListener('change', applyFilters);
     if (filterUf) filterUf.addEventListener('change', applyFilters);
-    if (filterMunicipio) filterMunicipio.addEventListener('change', applyFilters);
 
-    // Busca de Mudanças de Endereço
+    if (filterSecao) {
+      filterSecao.addEventListener('change', (e) => {
+        const secId = e.target.value;
+        if (secId === 'all') return;
+        const sec = secoesData.find(s => s.id === secId);
+        if (sec) selectSection(sec);
+      });
+    }
+
+    // Busca mudanças de endereço
     const searchRelocated = document.getElementById('search-relocated');
     if (searchRelocated) {
       searchRelocated.addEventListener('input', (e) => {
@@ -500,7 +452,7 @@
       });
     }
 
-    // Botões de aba
+    // Abas
     document.getElementById('tab-map').addEventListener('click', () => switchTab('map'));
     document.getElementById('tab-relocated').addEventListener('click', () => switchTab('relocated'));
     document.getElementById('tab-analytics').addEventListener('click', () => switchTab('analytics'));
@@ -518,11 +470,11 @@
   }
 
   window.addEventListener('DOMContentLoaded', () => {
-    initMap();
+    populateSecaoSelect(secoesData);
     selectSection(secoesData[0]);
     renderRelocatedTable();
     initCharts();
-    setupFilters();
+    setupInteractions();
   });
 
 })();

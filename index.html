@@ -3,10 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Análise Eleitoral Brasil • 1º e 2º Turnos & Mudanças de Seção</title>
+  <title>Análise Eleitoral Brasil • Mapa SVG Regional & Seções</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="style.css">
@@ -24,7 +22,7 @@
         </div>
         <div>
           <h1 class="text-base sm:text-lg font-bold text-white tracking-tight">Análise Eleitoral Brasil</h1>
-          <p class="text-xs text-slate-400">Eleições Presidenciais • Mapas de Calor, Urnas & Mudanças de Endereço</p>
+          <p class="text-xs text-slate-400">Eleições Presidenciais • Mapa SVG Interativo por Região & UF</p>
         </div>
       </div>
 
@@ -43,7 +41,7 @@
     <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-4 border-t border-slate-800/80 py-1 overflow-x-auto no-scrollbar">
       <button id="tab-map" class="tab-btn active flex items-center gap-2 py-2 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all">
         <i data-lucide="map" class="w-4 h-4"></i>
-        <span>Mapa Calor (1º Turno)</span>
+        <span>Mapa SVG Interativo (Regiões & UFs)</span>
       </button>
       <button id="tab-relocated" class="tab-btn flex items-center gap-2 py-2 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all">
         <i data-lucide="map-pin" class="w-4 h-4"></i>
@@ -61,14 +59,14 @@
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
     <!-- ================================================================= -->
-    <!-- ABA 1: MAPA DE CALOR E VOTAÇÃO POR SEÇÃO / CIDADE / ESTADO -->
+    <!-- ABA 1: MAPA SVG INTERATIVO DO BRASIL (ESTILO MAPCHART) -->
     <!-- ================================================================= -->
     <section id="view-map" class="tab-view space-y-6">
       
-      <!-- Painel de Filtros e Seleção Geográfica -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <!-- Painel de Filtros e Seleção -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Região</label>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filtrar por Região</label>
           <select id="filter-region" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
             <option value="all">Todas as Regiões (Brasil)</option>
             <option value="Norte">Norte</option>
@@ -80,7 +78,7 @@
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Estado (UF)</label>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filtrar por UF / Estado</label>
           <select id="filter-uf" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
             <option value="all">Todos os Estados</option>
             <option value="SP">São Paulo (SP)</option>
@@ -88,61 +86,87 @@
             <option value="MG">Minas Gerais (MG)</option>
             <option value="BA">Bahia (BA)</option>
             <option value="RS">Rio Grande do Sul (RS)</option>
-            <option value="PE">Pernambuco (PE)</option>
             <option value="CE">Ceará (CE)</option>
             <option value="PA">Pará (PA)</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Município</label>
-          <select id="filter-municipio" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
-            <option value="all">Todos os Municípios</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Visualização do Mapa</label>
-          <select id="filter-layer-mode" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
-            <option value="candidate">Candidato Vencedor (Calor)</option>
-            <option value="turnout">Comparecimento / Abstenção</option>
-            <option value="density">Densidade Eleitoral</option>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Seção / Urna Específica</label>
+          <select id="filter-secao" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <option value="all">Todas as Seções Cadastradas</option>
           </select>
         </div>
       </div>
 
-      <!-- Grid Principal: Mapa Leaflet + Card de Detalhes da Urna/Local -->
+      <!-- Grid Principal: Mapa SVG Regional + Detalhes -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Mapa Interativo (2 colunas) -->
-        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-          <div class="p-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+        <!-- Mapa SVG Estilo MapChart (2 colunas) -->
+        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col p-5">
+          <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
             <div class="flex items-center gap-2">
-              <i data-lucide="compass" class="w-4 h-4 text-orange-400"></i>
-              <h2 class="font-bold text-sm sm:text-base text-white">Mapa Interativo de Urnas & Seções</h2>
+              <i data-lucide="map-pinned" class="w-5 h-5 text-orange-400"></i>
+              <h2 class="font-bold text-base text-white">Mapa Interativo do Brasil por Regiões & UFs (Vencedor 1º Turno)</h2>
             </div>
-            <span id="map-counter-badge" class="text-xs text-slate-400 font-mono">Mostrando 12 seções amostrais</span>
+            <span class="text-xs text-slate-400 font-mono" id="svg-map-subtitle">Clique em uma região/UF para ver detalhes</span>
           </div>
-          
-          <div id="map" class="w-full h-[450px] sm:h-[520px] z-10 bg-slate-950"></div>
-          
-          <div class="p-3 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
+
+          <!-- SVG Container Estilizado -->
+          <div class="relative w-full h-[400px] sm:h-[460px] bg-slate-950 rounded-2xl border border-slate-800/80 flex items-center justify-center p-4 overflow-hidden">
+            
+            <!-- SVG do Brasil Estilizado por Regiões (Clique interativo) -->
+            <svg viewBox="0 0 600 600" class="w-full h-full max-h-[420px]" xmlns="http://www.w3.org/2000/svg">
+              <!-- Norte -->
+              <g id="region-norte" class="cursor-pointer group region-group" data-region="Norte">
+                <path d="M120,80 Q220,60 300,120 Q320,180 260,240 Q180,260 120,200 Z" fill="#22c55e" fill-opacity="0.85" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
+                <text x="210" y="160" fill="#ffffff" font-weight="bold" font-size="16" text-anchor="middle" pointer-events="none">NORTE (Bolsonaro 55%)</text>
+              </g>
+
+              <!-- Nordeste (Lula forte) -->
+              <g id="region-nordeste" class="cursor-pointer group region-group" data-region="Nordeste">
+                <path d="M310,130 Q420,140 480,220 Q440,300 330,280 Q290,220 310,130 Z" fill="#f97316" fill-opacity="0.9" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
+                <text x="380" y="210" fill="#ffffff" font-weight="bold" font-size="16" text-anchor="middle" pointer-events="none">NORDESTE (Lula 69%)</text>
+              </g>
+
+              <!-- Centro-Oeste -->
+              <g id="region-centro-oeste" class="cursor-pointer group region-group" data-region="Centro-Oeste">
+                <path d="M200,250 Q280,240 310,300 Q280,380 200,360 Q170,300 200,250 Z" fill="#22c55e" fill-opacity="0.85" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
+                <text x="245" y="310" fill="#ffffff" font-weight="bold" font-size="14" text-anchor="middle" pointer-events="none">CENTRO-OESTE</text>
+              </g>
+
+              <!-- Sudeste -->
+              <g id="region-sudeste" class="cursor-pointer group region-group" data-region="Sudeste">
+                <path d="M320,310 Q410,300 430,370 Q370,420 310,370 Z" fill="#22c55e" fill-opacity="0.8" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
+                <text x="365" y="355" fill="#ffffff" font-weight="bold" font-size="15" text-anchor="middle" pointer-events="none">SUDESTE (Bolsonaro 52%)</text>
+              </g>
+
+              <!-- Sul -->
+              <g id="region-sul" class="cursor-pointer group region-group" data-region="Sul">
+                <path d="M290,390 Q360,390 350,470 Q280,480 270,420 Z" fill="#22c55e" fill-opacity="0.9" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
+                <text x="310" y="435" fill="#ffffff" font-weight="bold" font-size="14" text-anchor="middle" pointer-events="none">SUL (Bolsonaro 56%)</text>
+              </g>
+            </svg>
+
+          </div>
+
+          <!-- Legenda do Mapa SVG -->
+          <div class="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
             <div class="flex items-center gap-4">
-              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block"></span> Lula (PT)</span>
-              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Bolsonaro (PL)</span>
-              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> Outros / Empate</span>
+              <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-md bg-orange-500 inline-block"></span> Vencedor: Lula (PT)</span>
+              <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-md bg-emerald-500 inline-block"></span> Vencedor: Bolsonaro (PL)</span>
             </div>
-            <span>Clique em um marcador para ver detalhes da seção</span>
+            <span>Clique na região para filtrar os resultados</span>
           </div>
         </div>
 
-        <!-- Painel Lateral de Detalhes da Seleção -->
+        <!-- Painel Lateral de Detalhes da Seção / Região -->
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between space-y-4">
           <div>
             <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
               <div class="flex items-center gap-2">
                 <i data-lucide="info" class="w-4 h-4 text-orange-400"></i>
-                <h3 class="font-bold text-sm sm:text-base text-white">Detalhes do Local / Seção</h3>
+                <h3 class="font-bold text-sm sm:text-base text-white">Detalhes da Seção / Urna</h3>
               </div>
               <span id="detail-badge-status" class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 Seção Regular
@@ -154,8 +178,9 @@
               <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2">
                 <p class="text-slate-400 text-xs uppercase font-semibold">Local de Votação:</p>
                 <p id="det-local-name" class="font-bold text-white text-base">Escola Estadual Dom Pedro II</p>
-                <p id="det-address" class="text-slate-300 text-xs">Av. Central, 1000 - Centro, São Paulo - SP</p>
-                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-900 text-xs">
+                <p id="det-address" class="text-slate-300 text-xs">Av. Paulista, 1000 - Bela Vista, São Paulo - SP</p>
+                <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-900 text-xs">
+                  <div><span class="text-slate-500 block">Região:</span> <strong id="det-regiao" class="text-slate-200">Sudeste</strong></div>
                   <div><span class="text-slate-500 block">Zona:</span> <strong id="det-zona" class="text-slate-200">0013</strong></div>
                   <div><span class="text-slate-500 block">Seção:</span> <strong id="det-secao" class="text-slate-200">0124</strong></div>
                 </div>
@@ -322,7 +347,7 @@
 
   <!-- Rodapé -->
   <footer class="mt-auto border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-500">
-    <p>Análise Eleitoral TSE • Desenvolvido por @brendan para a equipe XIUD • Dados Oficiais Eleições Presidenciais</p>
+    <p>Análise Eleitoral TSE • Desenvolvido por @brendan para a equipe XIUD • Mapa SVG Estilo MapChart sem chaves externas</p>
   </footer>
 
   <!-- Scripts -->
