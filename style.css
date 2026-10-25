@@ -1,0 +1,47 @@
+/* Estilos customizados para Análise Eleitoral TSE */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+.tab-btn {
+  color: #94a3b8;
+  border-color: transparent;
+}
+.tab-btn:hover {
+  color: #f8fafc;
+}
+.tab-btn.active {
+  color: #f97316;
+  border-color: #f97316;
+}
+
+/* Customização do Mapa Leaflet para tema escuro */
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155;
+  border-radius: 12px;
+}
+.leaflet-container {
+  background-color: #090d16 !important;
+  font-family: inherit;
+}

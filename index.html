@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análise Eleitoral Brasil • 1º e 2º Turnos & Mudanças de Seção</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 via-amber-500 to-emerald-600 p-0.5 shadow-lg flex items-center justify-center">
+          <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center font-black text-orange-400">
+            🗳️
+          </div>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-white tracking-tight">Análise Eleitoral Brasil</h1>
+          <p class="text-xs text-slate-400">Eleições Presidenciais • Mapas de Calor, Urnas & Mudanças de Endereço</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="px-3 py-1 rounded-full bg-orange-500/10 text-orange-400 text-xs font-bold border border-orange-500/20 hidden sm:inline-block">
+          Dados Oficiais TSE
+        </span>
+        <button id="btn-export-report" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Relatório JSON</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navegação de Abas -->
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-4 border-t border-slate-800/80 py-1 overflow-x-auto no-scrollbar">
+      <button id="tab-map" class="tab-btn active flex items-center gap-2 py-2 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all">
+        <i data-lucide="map" class="w-4 h-4"></i>
+        <span>Mapa Calor (1º Turno)</span>
+      </button>
+      <button id="tab-relocated" class="tab-btn flex items-center gap-2 py-2 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all">
+        <i data-lucide="map-pin" class="w-4 h-4"></i>
+        <span>Mudanças de Endereço (1º ➔ 2º)</span>
+        <span id="badge-relocated-count" class="px-1.5 py-0.2 bg-rose-500/20 text-rose-400 text-[11px] rounded-full font-bold">12</span>
+      </button>
+      <button id="tab-analytics" class="tab-btn flex items-center gap-2 py-2 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all">
+        <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+        <span>Estatísticas & Percentuais</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- ================================================================= -->
+    <!-- ABA 1: MAPA DE CALOR E VOTAÇÃO POR SEÇÃO / CIDADE / ESTADO -->
+    <!-- ================================================================= -->
+    <section id="view-map" class="tab-view space-y-6">
+      
+      <!-- Painel de Filtros e Seleção Geográfica -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Região</label>
+          <select id="filter-region" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <option value="all">Todas as Regiões (Brasil)</option>
+            <option value="Norte">Norte</option>
+            <option value="Nordeste">Nordeste</option>
+            <option value="Centro-Oeste">Centro-Oeste</option>
+            <option value="Sudeste">Sudeste</option>
+            <option value="Sul">Sul</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Estado (UF)</label>
+          <select id="filter-uf" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <option value="all">Todos os Estados</option>
+            <option value="SP">São Paulo (SP)</option>
+            <option value="RJ">Rio de Janeiro (RJ)</option>
+            <option value="MG">Minas Gerais (MG)</option>
+            <option value="BA">Bahia (BA)</option>
+            <option value="RS">Rio Grande do Sul (RS)</option>
+            <option value="PE">Pernambuco (PE)</option>
+            <option value="CE">Ceará (CE)</option>
+            <option value="PA">Pará (PA)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Município</label>
+          <select id="filter-municipio" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <option value="all">Todos os Municípios</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Visualização do Mapa</label>
+          <select id="filter-layer-mode" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <option value="candidate">Candidato Vencedor (Calor)</option>
+            <option value="turnout">Comparecimento / Abstenção</option>
+            <option value="density">Densidade Eleitoral</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Grid Principal: Mapa Leaflet + Card de Detalhes da Urna/Local -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Mapa Interativo (2 colunas) -->
+        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+          <div class="p-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="compass" class="w-4 h-4 text-orange-400"></i>
+              <h2 class="font-bold text-sm sm:text-base text-white">Mapa Interativo de Urnas & Seções</h2>
+            </div>
+            <span id="map-counter-badge" class="text-xs text-slate-400 font-mono">Mostrando 12 seções amostrais</span>
+          </div>
+          
+          <div id="map" class="w-full h-[450px] sm:h-[520px] z-10 bg-slate-950"></div>
+          
+          <div class="p-3 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
+            <div class="flex items-center gap-4">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block"></span> Lula (PT)</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Bolsonaro (PL)</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> Outros / Empate</span>
+            </div>
+            <span>Clique em um marcador para ver detalhes da seção</span>
+          </div>
+        </div>
+
+        <!-- Painel Lateral de Detalhes da Seleção -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <div class="flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-orange-400"></i>
+                <h3 class="font-bold text-sm sm:text-base text-white">Detalhes do Local / Seção</h3>
+              </div>
+              <span id="detail-badge-status" class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Seção Regular
+              </span>
+            </div>
+
+            <!-- Informações Estruturadas -->
+            <div id="selection-details-content" class="space-y-4 text-xs sm:text-sm">
+              <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+                <p class="text-slate-400 text-xs uppercase font-semibold">Local de Votação:</p>
+                <p id="det-local-name" class="font-bold text-white text-base">Escola Estadual Dom Pedro II</p>
+                <p id="det-address" class="text-slate-300 text-xs">Av. Central, 1000 - Centro, São Paulo - SP</p>
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-900 text-xs">
+                  <div><span class="text-slate-500 block">Zona:</span> <strong id="det-zona" class="text-slate-200">0013</strong></div>
+                  <div><span class="text-slate-500 block">Seção:</span> <strong id="det-secao" class="text-slate-200">0124</strong></div>
+                </div>
+              </div>
+
+              <!-- Gráfico de Votação na Seção -->
+              <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+                <p class="text-slate-400 text-xs uppercase font-semibold">Votação para Presidente (1º Turno):</p>
+                
+                <!-- Barra Lula -->
+                <div>
+                  <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-orange-400">Lula (PT)</span>
+                    <span id="det-lula-val" class="font-mono text-orange-400">-- votos (--%)</span>
+                  </div>
+                  <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden">
+                    <div id="det-lula-bar" class="h-full bg-orange-500 rounded-full transition-all" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <!-- Barra Bolsonaro -->
+                <div>
+                  <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-emerald-400">Bolsonaro (PL)</span>
+                    <span id="det-bolso-val" class="font-mono text-emerald-400">-- votos (--%)</span>
+                  </div>
+                  <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden">
+                    <div id="det-bolso-bar" class="h-full bg-emerald-500 rounded-full transition-all" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <!-- Outros / Brancos / Nulos -->
+                <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-900 text-center text-xs">
+                  <div class="bg-slate-900 p-2 rounded-xl">
+                    <span class="text-[10px] text-slate-500 block uppercase">Outros</span>
+                    <strong id="det-outros" class="text-slate-300 font-mono">--</strong>
+                  </div>
+                  <div class="bg-slate-900 p-2 rounded-xl">
+                    <span class="text-[10px] text-slate-500 block uppercase">Brancos</span>
+                    <strong id="det-brancos" class="text-slate-300 font-mono">--</strong>
+                  </div>
+                  <div class="bg-slate-900 p-2 rounded-xl">
+                    <span class="text-[10px] text-slate-500 block uppercase">Nulos</span>
+                    <strong id="det-nulos" class="text-rose-400 font-mono">--</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Totalizadores e Comparecimento -->
+          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-xs space-y-1.5">
+            <div class="flex justify-between text-slate-400">
+              <span>Eleitores Aptos:</span>
+              <strong id="det-aptos" class="text-white font-mono">--</strong>
+            </div>
+            <div class="flex justify-between text-slate-400">
+              <span>Comparecimento:</span>
+              <strong id="det-comparecimento" class="text-emerald-400 font-mono">-- (--%)</strong>
+            </div>
+            <div class="flex justify-between text-slate-400">
+              <span>Abstenção:</span>
+              <strong id="det-abstencoes" class="text-amber-400 font-mono">-- (--%)</strong>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- ABA 2: MUDANÇAS DE ENDEREÇO (1º PARA 2º TURNO) -->
+    <!-- ================================================================= -->
+    <section id="view-relocated" class="tab-view hidden space-y-6">
+      
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400"></i>
+              <h2 class="text-xl font-bold text-white">Seções com Mudança de Endereço (1º ➔ 2º Turno)</h2>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Informações oficiais do TSE sobre locais de votação alterados entre o primeiro e o segundo turno, exibindo o comparativo de voto em cada seção afetada.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="search-relocated" placeholder="Buscar por zona, seção ou escola..." class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 w-60">
+          </div>
+        </div>
+
+        <!-- Tabela de Urnas / Seções com Mudança -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm">
+            <thead class="bg-slate-800/80 text-slate-300 font-bold uppercase text-[11px] border-b border-slate-700">
+              <tr>
+                <th class="py-3 px-3">UF / Município</th>
+                <th class="py-3 px-3">Zona / Seção</th>
+                <th class="py-3 px-3">Endereço Original (1º Turno)</th>
+                <th class="py-3 px-3 text-amber-400">Novo Endereço (2º Turno)</th>
+                <th class="py-3 px-3">Vencedor Seção</th>
+                <th class="py-3 px-3 text-right">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="relocated-table-body" class="divide-y divide-slate-800">
+              <!-- Populado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- ABA 3: ESTATÍSTICAS E PERCENTUAIS GERAIS -->
+    <!-- ================================================================= -->
+    <section id="view-analytics" class="tab-view hidden space-y-6">
+
+      <!-- Cards Resumo Brasil -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+          <span class="text-xs uppercase font-bold text-slate-400 block mb-1">Total de Eleitores Aptos</span>
+          <span id="stat-aptos" class="text-xl sm:text-2xl font-black text-white font-mono">156.454.011</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+          <span class="text-xs uppercase font-bold text-emerald-400 block mb-1">Comparecimento</span>
+          <span id="stat-comparecimento" class="text-xl sm:text-2xl font-black text-emerald-400 font-mono">79.05%</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+          <span class="text-xs uppercase font-bold text-amber-400 block mb-1">Abstenção</span>
+          <span id="stat-abstencao" class="text-xl sm:text-2xl font-black text-amber-400 font-mono">20.95%</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+          <span class="text-xs uppercase font-bold text-orange-400 block mb-1">Urnas Apuradas</span>
+          <span id="stat-urnas" class="text-xl sm:text-2xl font-black text-orange-400 font-mono">472.075 (100%)</span>
+        </div>
+      </div>
+
+      <!-- Gráficos Analíticos -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Gráfico 1: Votação Nacional Presidencial -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between">
+          <h3 class="font-bold text-base text-white mb-4">Resultado Nacional Consolidado (Presidencial)</h3>
+          <div class="relative h-64 flex items-center justify-center">
+            <canvas id="chart-national-votes"></canvas>
+          </div>
+        </div>
+
+        <!-- Gráfico 2: Votação por Região (Lula vs Bolsonaro) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between">
+          <h3 class="font-bold text-base text-white mb-4">Distribuição de Votos por Região (%)</h3>
+          <div class="relative h-64 flex items-center justify-center">
+            <canvas id="chart-region-votes"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Rodapé -->
+  <footer class="mt-auto border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    <p>Análise Eleitoral TSE • Desenvolvido por @brendan para a equipe XIUD • Dados Oficiais Eleições Presidenciais</p>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+  <script>
+    if (window.lucide) lucide.createIcons();
+  </script>
+</body>
+</html>
