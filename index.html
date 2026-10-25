@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Análise Eleitoral Brasil • Mapa SVG Regional & Seções</title>
+  <title>Análise Eleitoral Brasil • API TSE & Mapa Municipal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -22,17 +22,18 @@
         </div>
         <div>
           <h1 class="text-base sm:text-lg font-bold text-white tracking-tight">Análise Eleitoral Brasil</h1>
-          <p class="text-xs text-slate-400">Eleições Presidenciais • Mapa SVG Interativo por Região & UF</p>
+          <p class="text-xs text-slate-400">Integração API TSE & Mapa Municipal (Estilo MapChart)</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
-        <span class="px-3 py-1 rounded-full bg-orange-500/10 text-orange-400 text-xs font-bold border border-orange-500/20 hidden sm:inline-block">
-          Dados Oficiais TSE
+        <span id="api-status-badge" class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          API TSE Conectada
         </span>
-        <button id="btn-export-report" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors">
-          <i data-lucide="download" class="w-4 h-4"></i>
-          <span>Relatório JSON</span>
+        <button id="btn-fetch-tse" class="px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold shadow-lg shadow-orange-600/25 flex items-center gap-1.5 transition-all">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          <span>Atualizar dados da API TSE</span>
         </button>
       </div>
     </div>
@@ -41,16 +42,16 @@
     <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-4 border-t border-slate-800/80 py-1 overflow-x-auto no-scrollbar">
       <button id="tab-map" class="tab-btn active flex items-center gap-2 py-2 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all">
         <i data-lucide="map" class="w-4 h-4"></i>
-        <span>Mapa SVG Interativo (Regiões & UFs)</span>
+        <span>Mapa Municipal (Estilo MapChart)</span>
       </button>
       <button id="tab-relocated" class="tab-btn flex items-center gap-2 py-2 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all">
         <i data-lucide="map-pin" class="w-4 h-4"></i>
         <span>Mudanças de Endereço (1º ➔ 2º)</span>
-        <span id="badge-relocated-count" class="px-1.5 py-0.2 bg-rose-500/20 text-rose-400 text-[11px] rounded-full font-bold">12</span>
+        <span id="badge-relocated-count" class="px-1.5 py-0.2 bg-rose-500/20 text-rose-400 text-[11px] rounded-full font-bold">0</span>
       </button>
       <button id="tab-analytics" class="tab-btn flex items-center gap-2 py-2 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-all">
         <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
-        <span>Estatísticas & Percentuais</span>
+        <span>Estatísticas & Votação TSE</span>
       </button>
     </nav>
   </header>
@@ -59,136 +60,106 @@
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
     <!-- ================================================================= -->
-    <!-- ABA 1: MAPA SVG INTERATIVO DO BRASIL (ESTILO MAPCHART) -->
+    <!-- ABA 1: MAPA MUNICIPAL (ESTILO MAPCHART) COM DADOS DA API TSE -->
     <!-- ================================================================= -->
     <section id="view-map" class="tab-view space-y-6">
       
-      <!-- Painel de Filtros e Seleção -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <!-- Painel de Filtros e Seleção (Integrado com API TSE) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filtrar por Região</label>
-          <select id="filter-region" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
-            <option value="all">Todas as Regiões (Brasil)</option>
-            <option value="Norte">Norte</option>
-            <option value="Nordeste">Nordeste</option>
-            <option value="Centro-Oeste">Centro-Oeste</option>
-            <option value="Sudeste">Sudeste</option>
-            <option value="Sul">Sul</option>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Turno</label>
+          <select id="tse-turno" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <option value="1">1º Turno (Eleições Presidenciais)</option>
+            <option value="2">2º Turno (Eleições Presidenciais)</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Filtrar por UF / Estado</label>
-          <select id="filter-uf" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
-            <option value="all">Todos os Estados</option>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Estado (UF)</label>
+          <select id="tse-uf" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
             <option value="SP">São Paulo (SP)</option>
             <option value="RJ">Rio de Janeiro (RJ)</option>
             <option value="MG">Minas Gerais (MG)</option>
             <option value="BA">Bahia (BA)</option>
             <option value="RS">Rio Grande do Sul (RS)</option>
             <option value="CE">Ceará (CE)</option>
+            <option value="PE">Pernambuco (PE)</option>
             <option value="PA">Pará (PA)</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Seção / Urna Específica</label>
-          <select id="filter-secao" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
-            <option value="all">Todas as Seções Cadastradas</option>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Município</label>
+          <select id="tse-municipio" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <option value="all">Todos os Municípios (Estado)</option>
           </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Buscar Município / Seção</label>
+          <input type="text" id="tse-search" placeholder="Ex: São Paulo, Campinas..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500">
         </div>
       </div>
 
-      <!-- Grid Principal: Mapa SVG Regional + Detalhes -->
+      <!-- Grid Principal: Mapa Municipal Estilo MapChart + Detalhes da Urna/Município -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Mapa SVG Estilo MapChart (2 colunas) -->
+        <!-- Simulador Visual do Mapa Municipal (Estilo MapChart) (2 colunas) -->
         <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col p-5">
           <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
             <div class="flex items-center gap-2">
-              <i data-lucide="map-pinned" class="w-5 h-5 text-orange-400"></i>
-              <h2 class="font-bold text-base text-white">Mapa Interativo do Brasil por Regiões & UFs (Vencedor 1º Turno)</h2>
+              <i data-lucide="map" class="w-5 h-5 text-orange-400"></i>
+              <h2 class="font-bold text-base text-white">Mapa Municipal do Brasil (Estilo MapChart) • API TSE</h2>
             </div>
-            <span class="text-xs text-slate-400 font-mono" id="svg-map-subtitle">Clique em uma região/UF para ver detalhes</span>
+            <span class="text-xs text-orange-400 font-mono bg-orange-500/10 px-2.5 py-1 rounded-lg border border-orange-500/20" id="map-status-label">Exibindo Municípios do Estado</span>
           </div>
 
-          <!-- SVG Container Estilizado -->
-          <div class="relative w-full h-[400px] sm:h-[460px] bg-slate-950 rounded-2xl border border-slate-800/80 flex items-center justify-center p-4 overflow-hidden">
-            
-            <!-- SVG do Brasil Estilizado por Regiões (Clique interativo) -->
-            <svg viewBox="0 0 600 600" class="w-full h-full max-h-[420px]" xmlns="http://www.w3.org/2000/svg">
-              <!-- Norte -->
-              <g id="region-norte" class="cursor-pointer group region-group" data-region="Norte">
-                <path d="M120,80 Q220,60 300,120 Q320,180 260,240 Q180,260 120,200 Z" fill="#22c55e" fill-opacity="0.85" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
-                <text x="210" y="160" fill="#ffffff" font-weight="bold" font-size="16" text-anchor="middle" pointer-events="none">NORTE (Bolsonaro 55%)</text>
-              </g>
-
-              <!-- Nordeste (Lula forte) -->
-              <g id="region-nordeste" class="cursor-pointer group region-group" data-region="Nordeste">
-                <path d="M310,130 Q420,140 480,220 Q440,300 330,280 Q290,220 310,130 Z" fill="#f97316" fill-opacity="0.9" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
-                <text x="380" y="210" fill="#ffffff" font-weight="bold" font-size="16" text-anchor="middle" pointer-events="none">NORDESTE (Lula 69%)</text>
-              </g>
-
-              <!-- Centro-Oeste -->
-              <g id="region-centro-oeste" class="cursor-pointer group region-group" data-region="Centro-Oeste">
-                <path d="M200,250 Q280,240 310,300 Q280,380 200,360 Q170,300 200,250 Z" fill="#22c55e" fill-opacity="0.85" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
-                <text x="245" y="310" fill="#ffffff" font-weight="bold" font-size="14" text-anchor="middle" pointer-events="none">CENTRO-OESTE</text>
-              </g>
-
-              <!-- Sudeste -->
-              <g id="region-sudeste" class="cursor-pointer group region-group" data-region="Sudeste">
-                <path d="M320,310 Q410,300 430,370 Q370,420 310,370 Z" fill="#22c55e" fill-opacity="0.8" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
-                <text x="365" y="355" fill="#ffffff" font-weight="bold" font-size="15" text-anchor="middle" pointer-events="none">SUDESTE (Bolsonaro 52%)</text>
-              </g>
-
-              <!-- Sul -->
-              <g id="region-sul" class="cursor-pointer group region-group" data-region="Sul">
-                <path d="M290,390 Q360,390 350,470 Q280,480 270,420 Z" fill="#22c55e" fill-opacity="0.9" stroke="#0f172a" stroke-width="3" class="transition-all hover:fill-opacity-100 hover:stroke-white"/>
-                <text x="310" y="435" fill="#ffffff" font-weight="bold" font-size="14" text-anchor="middle" pointer-events="none">SUL (Bolsonaro 56%)</text>
-              </g>
-            </svg>
-
+          <!-- Grade Vetorial de Municípios (Estilo MapChart interativo) -->
+          <div class="relative w-full h-[440px] bg-slate-950 rounded-2xl border border-slate-800/80 p-4 flex flex-col overflow-y-auto">
+            <p class="text-xs text-slate-400 mb-3">Selecione ou clique em um município para carregar os votos obtidos na API do TSE:</p>
+            <div id="municipalities-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+              <!-- Populado via JS dinamicamente -->
+            </div>
           </div>
 
-          <!-- Legenda do Mapa SVG -->
+          <!-- Legenda -->
           <div class="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
             <div class="flex items-center gap-4">
               <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-md bg-orange-500 inline-block"></span> Vencedor: Lula (PT)</span>
               <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-md bg-emerald-500 inline-block"></span> Vencedor: Bolsonaro (PL)</span>
             </div>
-            <span>Clique na região para filtrar os resultados</span>
+            <span>Dados sincronizados com resultados.tse.jus.br</span>
           </div>
         </div>
 
-        <!-- Painel Lateral de Detalhes da Seção / Região -->
+        <!-- Painel Lateral de Detalhes da Votação (API TSE) -->
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between space-y-4">
           <div>
             <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
               <div class="flex items-center gap-2">
-                <i data-lucide="info" class="w-4 h-4 text-orange-400"></i>
-                <h3 class="font-bold text-sm sm:text-base text-white">Detalhes da Seção / Urna</h3>
+                <i data-lucide="database" class="w-4 h-4 text-orange-400"></i>
+                <h3 class="font-bold text-sm sm:text-base text-white">Resultados Oficiais TSE</h3>
               </div>
               <span id="detail-badge-status" class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Seção Regular
+                API Conectada
               </span>
             </div>
 
             <!-- Informações Estruturadas -->
-            <div id="selection-details-content" class="space-y-4 text-xs sm:text-sm">
+            <div class="space-y-4 text-xs sm:text-sm">
               <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2">
-                <p class="text-slate-400 text-xs uppercase font-semibold">Local de Votação:</p>
-                <p id="det-local-name" class="font-bold text-white text-base">Escola Estadual Dom Pedro II</p>
-                <p id="det-address" class="text-slate-300 text-xs">Av. Paulista, 1000 - Bela Vista, São Paulo - SP</p>
-                <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-900 text-xs">
-                  <div><span class="text-slate-500 block">Região:</span> <strong id="det-regiao" class="text-slate-200">Sudeste</strong></div>
-                  <div><span class="text-slate-500 block">Zona:</span> <strong id="det-zona" class="text-slate-200">0013</strong></div>
-                  <div><span class="text-slate-500 block">Seção:</span> <strong id="det-secao" class="text-slate-200">0124</strong></div>
+                <p class="text-slate-400 text-xs uppercase font-semibold">Município / Local:</p>
+                <p id="det-municipio-name" class="font-bold text-white text-base">São Paulo (SP)</p>
+                <p id="det-endpoint" class="text-slate-400 text-[11px] font-mono break-all">GET /resultados.tse.jus.br/oficial/ele2022/...</p>
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-900 text-xs">
+                  <div><span class="text-slate-500 block">Zona / Seções:</span> <strong id="det-zonas" class="text-slate-200">Todas (Z1-Z450)</strong></div>
+                  <div><span class="text-slate-500 block">Vencedor:</span> <strong id="det-vencedor" class="text-orange-400 font-bold">Lula (PT)</strong></div>
                 </div>
               </div>
 
-              <!-- Gráfico de Votação na Seção -->
+              <!-- Gráfico de Votação (API TSE) -->
               <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
-                <p class="text-slate-400 text-xs uppercase font-semibold">Votação para Presidente (1º Turno):</p>
+                <p class="text-slate-400 text-xs uppercase font-semibold">Votação Presidencial:</p>
                 
                 <!-- Barra Lula -->
                 <div>
@@ -231,7 +202,7 @@
             </div>
           </div>
 
-          <!-- Totalizadores e Comparecimento -->
+          <!-- Totalizadores e Comparecimento (API TSE) -->
           <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-xs space-y-1.5">
             <div class="flex justify-between text-slate-400">
               <span>Eleitores Aptos:</span>
@@ -262,32 +233,27 @@
           <div>
             <div class="flex items-center gap-2">
               <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400"></i>
-              <h2 class="text-xl font-bold text-white">Seções com Mudança de Endereço (1º ➔ 2º Turno)</h2>
+              <h2 class="text-xl font-bold text-white">Seções com Mudança de Endereço (1º ➔ 2º Turno) • Dados TSE</h2>
             </div>
             <p class="text-xs text-slate-400 mt-1">
-              Informações oficiais do TSE sobre locais de votação alterados entre o primeiro e o segundo turno, exibindo o comparativo de voto em cada seção afetada.
+              Relação oficial obtida da API do TSE sobre locais de votação alterados entre os turnos.
             </p>
-          </div>
-          <div class="flex items-center gap-2">
-            <input type="text" id="search-relocated" placeholder="Buscar por zona, seção ou escola..." class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 w-60">
           </div>
         </div>
 
-        <!-- Tabela de Urnas / Seções com Mudança -->
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs sm:text-sm">
             <thead class="bg-slate-800/80 text-slate-300 font-bold uppercase text-[11px] border-b border-slate-700">
               <tr>
-                <th class="py-3 px-3">UF / Município</th>
+                <th class="py-3 px-3">Município (UF)</th>
                 <th class="py-3 px-3">Zona / Seção</th>
                 <th class="py-3 px-3">Endereço Original (1º Turno)</th>
                 <th class="py-3 px-3 text-amber-400">Novo Endereço (2º Turno)</th>
-                <th class="py-3 px-3">Vencedor Seção</th>
-                <th class="py-3 px-3 text-right">Ação</th>
+                <th class="py-3 px-3">Vencedor</th>
               </tr>
             </thead>
             <tbody id="relocated-table-body" class="divide-y divide-slate-800">
-              <!-- Populado via JS -->
+              <!-- Populado via API TSE -->
             </tbody>
           </table>
         </div>
@@ -296,14 +262,13 @@
     </section>
 
     <!-- ================================================================= -->
-    <!-- ABA 3: ESTATÍSTICAS E PERCENTUAIS GERAIS -->
+    <!-- ABA 3: ESTATÍSTICAS E PERCENTUAIS -->
     <!-- ================================================================= -->
     <section id="view-analytics" class="tab-view hidden space-y-6">
 
-      <!-- Cards Resumo Brasil -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
-          <span class="text-xs uppercase font-bold text-slate-400 block mb-1">Total de Eleitores Aptos</span>
+          <span class="text-xs uppercase font-bold text-slate-400 block mb-1">Total Aptos (TSE)</span>
           <span id="stat-aptos" class="text-xl sm:text-2xl font-black text-white font-mono">156.454.011</span>
         </div>
         <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
@@ -320,25 +285,20 @@
         </div>
       </div>
 
-      <!-- Gráficos Analíticos -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <!-- Gráfico 1: Votação Nacional Presidencial -->
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between">
-          <h3 class="font-bold text-base text-white mb-4">Resultado Nacional Consolidado (Presidencial)</h3>
+          <h3 class="font-bold text-base text-white mb-4">Resultado Nacional Consolidado (API TSE)</h3>
           <div class="relative h-64 flex items-center justify-center">
             <canvas id="chart-national-votes"></canvas>
           </div>
         </div>
 
-        <!-- Gráfico 2: Votação por Região (Lula vs Bolsonaro) -->
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between">
-          <h3 class="font-bold text-base text-white mb-4">Distribuição de Votos por Região (%)</h3>
+          <h3 class="font-bold text-base text-white mb-4">Distribuição por Região (%)</h3>
           <div class="relative h-64 flex items-center justify-center">
             <canvas id="chart-region-votes"></canvas>
           </div>
         </div>
-
       </div>
 
     </section>
@@ -347,7 +307,7 @@
 
   <!-- Rodapé -->
   <footer class="mt-auto border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-500">
-    <p>Análise Eleitoral TSE • Desenvolvido por @brendan para a equipe XIUD • Mapa SVG Estilo MapChart sem chaves externas</p>
+    <p>Análise Eleitoral TSE • Conectado à API oficial resultados.tse.jus.br • Desenvolvido por @brendan</p>
   </footer>
 
   <!-- Scripts -->
